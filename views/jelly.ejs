@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Marine Information</title>
+    <link rel='stylesheet' href='/stylesheets/jelly.css' />
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <h1>목차</h1>
+            <p>다양한 해양 정보를 알고싶다면?</p>
+            <ul>
+                <a href="/">안전 항해 정보</a><br>
+                <a href="/">해양 안전 정보</a><br>
+                <a href="/jelly">어류츌현의예측</a><br>
+                <a href="/">해무 발생 소산 시간</a><br>
+            </ul>
+        </div>
+        <div class="content">
+            <div class="header">
+                <h1>확인하고 싶은 날짜를 선택해주세요.</h1>
+                <div class="datetime" id="datetime"></div>
+            </div>
+            <div class="main-content">
+                <div id="map" class="map"></div>
+                <div class="full-form">
+                    <form class="form-container" id="jellyfishForm">
+                        <div class="form">
+                            <h3>해파리 정보</h3>
+                            <label>날짜를 선택해주세요</label>
+                            <input type="date" name="sdate" id="sdate">
+                            <label>종료 날짜를 선택해주세요</label>
+                            <input type="date" name="edate" id="edate">
+                            <input type="submit" value="확인">
+                        </div>
+                    </form>
+                    <form class="form-container" id="jellyfishInfoForm">
+                        <div class="form">
+                            <h3>해파리 경보</h3>
+                            <label>경보 코드</label><input type="text" name="scode" id="scode">
+                            <input type="submit" value="확인">
+                        </div>
+                    </form>
+                </div>
+                
+                <div class="result-container">
+                    <div class="result1">
+                        <h2>해파리 정보</h2>
+                        <div id="jellyfishResult"></div>
+                    </div>
+                    <div class="result2">
+                        <h2>해파리 경보 정보</h2>
+                        <div id="noticeResult"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=8ee9a0be8ba249c2fa6bd77a78e68b9f"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
+    <script>
+        var map;
+
+        window.onload = function() {
+            initializeMap();
+            updateDateTime();
+        };
+
+        function initializeMap() {
+            var container = document.getElementById('map');
+            var options = {
+                center: new kakao.maps.LatLng(36.5, 127.5),
+                level: 13
+            };
+            map = new kakao.maps.Map(container, options);
+        }
+
+        function updateDateTime() {
+            var now = new Date();
+            var datetimeElement = document.getElementById('datetime');
+            var options = { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' };
+            var formattedDateTime = new Intl.DateTimeFormat('ko-KR', options).format(now);
+            datetimeElement.innerText = formattedDateTime;
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('jellyfishForm').addEventListener('submit', function(event) {
+                event.preventDefault();
+
+                var sdate = document.getElementById('sdate').value;
+                var edate = document.getElementById('edate').value;
+
+                if (!sdate || !edate) {
+                    alert('날짜를 모두 입력해주세요.');
+                    return;
+                }
+
+                var formData = new URLSearchParams();
+                formData.append('sdate', sdate);
+                formData.append('edate', edate);
+
+                console.log('Submitting jellyfishForm:', formData.toString());
+
+                fetch('/getJellyfish', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    }
+                }).then(response => response.json())
+                  .then(data => {
+                      console.log('Response:', data); // 응답 데이터 확인
+                      displayJellyfishData(data);
+                      initializeMap(); // 지도를 다시 초기화
+                  }).catch(error => console.error('Error:', error));
+            });
+
+        });
+
+        function displayJellyfishData(data) {
+            var jellyfishResult = document.getElementById('jellyfishResult');
+            jellyfishResult.innerHTML = ''; // 기존 내용을 초기화
+
+            if (data && data.body && data.body.item) {
+                var items = data.body.item.slice(0, 10); // 10개의 항목으로 제한
+                items.forEach(function(item) {
+                    var div = document.createElement('div');
+                    div.classList.add('jellyfish-item');
+                    div.innerHTML = '<div>' + item.board_subject + '</div>' +
+                                    '<div>날짜: ' + item.inpt_date + '</div>';
+                    jellyfishResult.appendChild(div);
+                });
+            } else {
+                jellyfishResult.innerHTML = '<p>해파리 정보를 찾을 수 없습니다.</p>';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('jellyfishInfoForm').addEventListener('submit', function(event) {
+                event.preventDefault();
+
+                var scode = document.getElementById('scode').value;
+
+                var formData = new URLSearchParams();
+                formData.append('scode', scode);
+
+                console.log('Submitting jellyfishInfoForm:', formData.toString());
+
+                fetch('/getJellyfishInfo', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    }
+                }).then(response => response.json())
+                  .then(data => {
+                      console.log('Response:', data); // 응답 데이터 확인
+                      displayNoticeData(data);
+                      initializeMap(); // 지도를 다시 초기화
+                  }).catch(error => console.error('Error:', error));
+            });
+
+            function displayNoticeData(data) {
+                const noticeResult = document.getElementById('noticeResult');
+                noticeResult.innerHTML = ''; // 기존 내용을 초기화
+
+                if (data && data.body && data.body.item) {
+                    var items = data.body.item.slice(0, 10); // 10개의 항목으로 제한
+                    items.forEach(item => {
+                        const noticeDiv = document.createElement('div');
+                        noticeDiv.classList.add('notice-item');
+
+                        const context = document.createElement('p');
+                        context.textContent = item.board_context;
+                        noticeDiv.appendChild(context);
+
+                        noticeResult.appendChild(noticeDiv);
+                    });
+                } else {
+                    const noData = document.createElement('p');
+                    noData.textContent = '해파리 경보 정보를 찾을 수 없습니다.';
+                    noticeResult.appendChild(noData);
+                }
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title><%= title %></title>
+    <link rel='stylesheet' href='/stylesheets/style.css' />
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <h1>목차</h1>
+            <p>다양한 해양 정보를 알고싶다면?</p>
+            <ul>
+                <a href="/">안전 항해 정보</a><br>
+                <a href="/">해양 안전 정보</a><br>
+                <a href="/jelly">어류츌현의예측</a><br>
+                <a href="/">해무 발생 소산 시간</a><br>
+            </ul>
+        </div>
+        <div class="content">
+            <div class="header">
+                <h1>오늘</h1>
+                <div class="datetime" id="datetime"></div>
+            </div>
+            <div class="main-content">
+                <div class="full-form">
+                    <form class="form-container" id="seafogForm">
+                        <div class="form">
+                            <h3>시간별 해무 발생 확률 확인</h3>
+                            <label>위도</label><input type="text" name="lat1" id="lat1">
+                            <label>경도</label><input type="text" name="lon1" id="lon1">
+                            <label>시간</label>
+                            <select name="time1" id="time1">
+                                <option value="1">1시간</option>
+                                <option value="3">3시간</option>
+                                <option value="6">6시간</option>
+                            </select>
+                            <input type="submit" value="확인">
+                        </div>
+                    </form>
+                    <form class="form-container" id="seafogDissipationForm">
+                        <div class="form">
+                            <h3>시간별 해무 소산 확률 확인</h3>
+                            <label>위도</label><input type="text" name="lat2" id="lat2">
+                            <label>경도</label><input type="text" name="lon2" id="lon2">
+                            <label>시간</label>
+                            <select name="time2" id="time2">
+                                <option value="1">1시간</option>
+                                <option value="3">3시간</option>
+                                <option value="6">6시간</option>
+                            </select>
+                            <input type="submit" value="확인">
+                        </div>
+                    </form>
+                </div>
+                <div id="map" class="map"></div>
+                <div class="result-container">
+                    <div class="result">
+                        <h2>해무 발생 확률</h2>
+                        <p id="fogProbability"><%= fogProbability %>%</p>
+                    </div>
+                    <div class="result">
+                        <h2>해무 소산 확률</h2>
+                        <p id="clearProbability"><%= clearProbability %>%</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=8ee9a0be8ba249c2fa6bd77a78e68b9f"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
+    <script>
+        window.onload = function() {
+            var container = document.getElementById('map');
+            var options = {
+                center: new kakao.maps.LatLng(36.5, 127.5),
+                level: 13
+            };
+
+            var map = new kakao.maps.Map(container, options);
+            updateDateTime();
+        };
+
+        function updateDateTime() {
+            var now = new Date();
+            var datetimeElement = document.getElementById('datetime');
+            var options = { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' };
+            var formattedDateTime = new Intl.DateTimeFormat('ko-KR', options).format(now);
+            datetimeElement.innerText = formattedDateTime;
+        }
+
+        document.getElementById('seafogForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            var lat1 = document.getElementById('lat1').value;
+            var lon1 = document.getElementById('lon1').value;
+            var time1 = parseInt(document.getElementById('time1').value);
+
+            var currentTime = new Date();
+            var futureTime = dayjs(currentTime).format('YYYYMMDDHH');
+
+            var formData = new URLSearchParams();
+            formData.append('lat1', lat1);
+            formData.append('lon1', lon1);
+            formData.append('time1', time1);
+
+            console.log('Submitting seafogForm:', formData.toString());
+
+            fetch('/seafog', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                }
+            }).then(response => response.json())
+              .then(data => {
+                  console.log('Response:', data); // 응답 데이터 확인
+                  document.getElementById('fogProbability').innerText = `${data.fogProbability}%`;
+              }).catch(error => console.error('Error:', error));
+        });
+
+        document.getElementById('seafogDissipationForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            var lat2 = document.getElementById('lat2').value;
+            var lon2 = document.getElementById('lon2').value;
+            var time2 = parseInt(document.getElementById('time2').value);
+
+            var currentTime = new Date();
+            var futureTime = dayjs(currentTime).format('YYYYMMDDHH');
+
+            var formData = new URLSearchParams();
+            formData.append('lat2', lat2);
+            formData.append('lon2', lon2);
+            formData.append('time2', time2);
+
+            console.log('Submitting seafogDissipationForm:', formData.toString());
+
+            fetch('/seafogDissipation', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                }
+            }).then(response => response.json())
+              .then(data => {
+                  console.log('Response:', data); // 응답 데이터 확인
+                  document.getElementById('clearProbability').innerText = `${data.clearProbability}%`;
+              }).catch(error => console.error('Error:', error));
+        });
+    </script>
+</body>
+</html>
